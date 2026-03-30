@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+}
+
+enum CreditLogType {
+  GRANT
+  DEDUCT
+  REFUND
+}
+
+enum PlaybookScope {
+  MVP
+  STANDARD
+  FULL
+}
+
+enum PlaybookStatus {
+  IN_PROGRESS
+  COMPLETE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  credits       Int       @default(0)
+  plan          Plan      @default(FREE)
+  stripeCustomerId String? @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  playbooks   Playbook[]
+  creditLogs  CreditLog[]
+}
+
+model CreditLog {
+  id        String        @id @default(cuid())
+  userId    String
+  type      CreditLogType
+  amount    Int
+  reason    String
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Playbook {
+  id          String         @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  techStack   String[]
+  scope       PlaybookScope
+  status      PlaybookStatus @default(IN_PROGRESS)
+  steps       Json
+  totalSteps  Int
+  doneSteps   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summaryDoc SummaryDoc?
+
+  @@index([userId])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model SummaryDoc {
+  id         String   @id @default(cuid())
+  playbookId String   @unique
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+}
